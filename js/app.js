@@ -1,29 +1,16 @@
 const App = (() => {
-  // State
   let drawingBase64 = '';
   let description = '';
   let story = '';
   let audioBlob = null;
   let videoBlob = null;
 
-  // DOM refs
   const $ = id => document.getElementById(id);
 
   function init() {
     DrawCanvas.init();
     I18N.apply();
 
-    // Restore saved keys
-    const savedKey = localStorage.getItem('mse_elevenlabs_key');
-    if (savedKey) $('input-elevenlabs-key').value = savedKey;
-    const savedUrl = localStorage.getItem('mse_ollama_url');
-    if (savedUrl) $('input-ollama-url').value = savedUrl;
-    const savedVision = localStorage.getItem('mse_vision_model');
-    if (savedVision) $('input-vision-model').value = savedVision;
-    const savedText = localStorage.getItem('mse_text_model');
-    if (savedText) $('input-text-model').value = savedText;
-
-    // Language buttons
     const savedLang = localStorage.getItem('mse_lang') || 'id';
     I18N.setLang(savedLang);
     document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -34,47 +21,9 @@ const App = (() => {
       });
     });
 
-    // API modal
-    $('btn-save-keys').addEventListener('click', saveKeysAndStart);
     $('btn-dismiss-error').addEventListener('click', () => $('error-banner').classList.add('hidden'));
-
-    // Drawing done
     $('btn-done').addEventListener('click', startProcessing);
-
-    // Start over
     $('btn-start-over').addEventListener('click', resetAll);
-
-    // Show API modal if no key saved
-    if (!savedKey) {
-      $('api-modal').classList.remove('hidden');
-    } else {
-      $('api-modal').classList.add('hidden');
-      configureAPIs();
-    }
-  }
-
-  function saveKeysAndStart() {
-    const key = $('input-elevenlabs-key').value.trim();
-    if (!key) {
-      showError(I18N.t('error.no_keys'));
-      return;
-    }
-    localStorage.setItem('mse_elevenlabs_key', key);
-    localStorage.setItem('mse_ollama_url', $('input-ollama-url').value.trim());
-    localStorage.setItem('mse_vision_model', $('input-vision-model').value.trim());
-    localStorage.setItem('mse_text_model', $('input-text-model').value.trim());
-    $('api-modal').classList.add('hidden');
-    configureAPIs();
-  }
-
-  function configureAPIs() {
-    const key = localStorage.getItem('mse_elevenlabs_key');
-    const url = localStorage.getItem('mse_ollama_url') || 'https://ollama.ai';
-    const vision = localStorage.getItem('mse_vision_model') || 'llava';
-    const text = localStorage.getItem('mse_text_model') || 'llama3.2';
-
-    ElevenLabsAPI.configure(key);
-    OllamaAPI.configure(url, vision, text);
   }
 
   function showPhase(id) {
@@ -101,47 +50,29 @@ const App = (() => {
   }
 
   async function startProcessing() {
-    if (!localStorage.getItem('mse_elevenlabs_key')) {
-      $('api-modal').classList.remove('hidden');
-      return;
-    }
-
     drawingBase64 = DrawCanvas.toBase64();
     showPhase('phase-processing');
 
     try {
-      // Step 2: Describe drawing
       setStep(2);
-      $('proc-emoji').textContent = '🤔';
+      $('proc-emoji').textContent = '\uD83E\uDD14';
       $('proc-title').textContent = I18N.t('proc.looking');
       $('proc-detail').textContent = '';
       updateProgress(10);
-      description = await OllamaAPI.describeDrawing(drawingBase64);
 
-      if (!description) throw new Error('No description returned');
-      updateProgress(30);
+      const result = await Pipeline.process(drawingBase64, I18N.getLang());
 
-      // Step 3: Generate story
-      setStep(3);
-      $('proc-emoji').textContent = '✨';
-      $('proc-title').textContent = I18N.t('proc.writing');
-      story = await OllamaAPI.generateStory(description);
+      description = result.description;
+      story = result.story;
+      audioBlob = result.audioBlob;
 
-      if (!story) throw new Error('No story returned');
-      updateProgress(50);
-
-      // Step 4: Text to speech
-      setStep(4);
-      $('proc-emoji').textContent = '🎙️';
-      $('proc-title').textContent = I18N.t('proc.speaking');
-      audioBlob = await ElevenLabsAPI.textToSpeech(story);
-
+      if (!description && !story) throw new Error('No story generated');
       if (!audioBlob) throw new Error('No audio returned');
+
       updateProgress(70);
 
-      // Step 5: Create video
       setStep(5);
-      $('proc-emoji').textContent = '🎬';
+      $('proc-emoji').textContent = '\uD83C\uDFAC';
       $('proc-title').textContent = I18N.t('proc.rendering');
       $('proc-detail').textContent = 'FFmpeg.wasm loading...';
       updateProgress(75);
@@ -154,16 +85,13 @@ const App = (() => {
       videoBlob = await VideoMaker.createVideo(DrawCanvas.toDataURL(), audioBlob);
       updateProgress(100);
 
-      // Show result
       showResult();
 
     } catch (err) {
       console.error('Processing error:', err);
       const msg = err.message || '';
-      if (msg.includes('Ollama') || msg.includes('ollama') || msg.includes('fetch')) {
+      if (msg.includes('Pipeline') || msg.includes('fetch') || msg.includes('NetworkError')) {
         showError(I18N.t('error.ollama') + ' ' + msg);
-      } else if (msg.includes('ElevenLabs') || msg.includes('elevenlabs') || msg.includes('xi-api')) {
-        showError(I18N.t('error.elevenlabs') + ' ' + msg);
       } else if (msg.includes('FFmpeg') || msg.includes('ffmpeg')) {
         showError(I18N.t('error.ffmpeg') + ' ' + msg);
       } else {

@@ -1,0 +1,70 @@
+{
+  "name": "Magic Story Pipeline",
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "parameters": {"httpMethod": "POST", "path": "magic-story", "responseMode": "responseNode"},
+      "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://ollama.ai/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"model\": \"llava\", \"prompt\": \"Describe this drawing in detail for a children story. What characters or objects are shown? What are they doing? Be specific. \" + ( $(\"Webhook\").item.json.language === \"id\" ? \" Write in Indonesian.\" : $(\"Webhook\").item.json.language === \"zh-TW\" ? \" Write in Traditional Chinese.\" : \" Write in English.\" ), \"images\": [\"\" + $(\"Webhook\").item.json.image + \"\"], \"stream\": false }",
+        "options": {}
+      },
+      "name": "Ollama Vision", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [300, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://ollama.ai/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"model\": \"llama3.2\", \"prompt\": \"Write a magical 30-second children story (under 100 words, ages 4-8) based on this description: \\\"\" + $node[\"Ollama Vision\"].json.response + \"\\\". Friendly, easy to understand, happy ending. \" + ( $(\"Webhook\").item.json.language === \"id\" ? \" Write in Indonesian.\" : $(\"Webhook\").item.json.language === \"zh-TW\" ? \" Write in Traditional Chinese.\" : \" Write in English.\" ), \"stream\": false }",
+        "options": {}
+      },
+      "name": "Ollama Story", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcj4gTq2TnbjiSf",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"text\": \"\" + $node[\"Ollama Story\"].json.response + \"\", \"model_id\": \"eleven_monolingual_v1\", \"voice_settings\": { \"stability\": 0.5, \"similarity_boost\": 0.75, \"style\": 0.2, \"use_speaker_boost\": true } }",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "xi-api-key", "value": "sk_353549171fc5238dc913ed1e5f5faf8d4e04604a44399d3"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "options": {}
+      },
+      "name": "ElevenLabs TTS", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [900, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const description = $node['Ollama Vision'].json.response || '';\nconst story = $node['Ollama Story'].json.response || '';\nconst audioBuffer = $node['ElevenLabs TTS'].binary.data;\nconst audioBase64 = audioBuffer ? Buffer.from(audioBuffer.data, 'base64').toString('base64') : '';\n\nreturn [{\n  json: {\n    description: description,\n    story: story,\n    audio: audioBase64\n  }\n}];"
+      },
+      "name": "Combine Response", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node['Combine Response'].json) }}"
+      },
+      "name": "Return Response", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1500, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Ollama Vision", "type": "main", "index": 0}]]},
+    "Ollama Vision": {"main": [[{"node": "Ollama Story", "type": "main", "index": 0}]]},
+    "Ollama Story": {"main": [[{"node": "ElevenLabs TTS", "type": "main", "index": 0}]]},
+    "ElevenLabs TTS": {"main": [[{"node": "Combine Response", "type": "main", "index": 0}]]},
+    "Combine Response": {"main": [[{"node": "Return Response", "type": "main", "index": 0}]]}
+  }
+}
