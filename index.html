@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Magic Story Engine</title>
+  <meta name="description" content="Draw a picture, AI creates a narrated story video!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Language Switcher -->
+  <div class="lang-bar">
+    <button class="lang-btn active" data-lang="id">ID</button>
+    <button class="lang-btn" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="zh-TW">中文</button>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="api-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 data-i18n="api.title">Setup API Keys</h2>
+      <p class="modal-hint" data-i18n="api.hint">Enter your API keys to get started. Keys are stored locally only.</p>
+      <div class="form-group">
+        <label data-i18n="api.elevenlabs">ElevenLabs API Key</label>
+        <input type="password" id="input-elevenlabs-key" placeholder="xi-...">
+      </div>
+      <div class="form-group">
+        <label>Ollama Server URL</label>
+        <input type="url" id="input-ollama-url" placeholder="https://ollama.ai" value="https://ollama.ai">
+      </div>
+      <div class="form-group">
+        <label data-i18n="api.ollama_model">Vision Model</label>
+        <input type="text" id="input-vision-model" placeholder="llava" value="llava">
+      </div>
+      <div class="form-group">
+        <label data-i18n="api.text_model">Text Model</label>
+        <input type="text" id="input-text-model" placeholder="llama3.2" value="llama3.2">
+      </div>
+      <button id="btn-save-keys" class="btn-primary" data-i18n="api.save">Save & Start</button>
+    </div>
+  </div>
+
+  <!-- Step Indicator -->
+  <div class="steps-bar">
+    <div class="step active" data-step="1"><span class="step-num">1</span><span class="step-label" data-i18n="step.draw">Draw</span></div>
+    <div class="step" data-step="2"><span class="step-num">2</span><span class="step-label" data-i18n="step.describe">Describe</span></div>
+    <div class="step" data-step="3"><span class="step-num">3</span><span class="step-label" data-i18n="step.story">Story</span></div>
+    <div class="step" data-step="4"><span class="step-num">4</span><span class="step-label" data-i18n="step.voice">Voice</span></div>
+    <div class="step" data-step="5"><span class="step-num">5</span><span class="step-label" data-i18n="step.video">Video</span></div>
+  </div>
+
+  <!-- Phase 1: Drawing Canvas -->
+  <section id="phase-draw" class="phase active">
+    <h1 class="app-title" data-i18n="app.title">Magic Story Engine</h1>
+    <p class="app-subtitle" data-i18n="app.subtitle">Draw a picture, get a story video!</p>
+    <div class="canvas-area">
+      <canvas id="draw-canvas" width="800" height="600"></canvas>
+    </div>
+    <div class="toolbar">
+      <div class="tool-group">
+        <input type="color" id="color-picker" value="#2d2dff" class="color-picker">
+        <div class="preset-colors">
+          <button class="color-dot" data-color="#ff4444" style="background:#ff4444"></button>
+          <button class="color-dot" data-color="#ff8c00" style="background:#ff8c00"></button>
+          <button class="color-dot" data-color="#ffd700" style="background:#ffd700"></button>
+          <button class="color-dot" data-color="#44cc44" style="background:#44cc44"></button>
+          <button class="color-dot" data-color="#2d2dff" style="background:#2d2dff"></button>
+          <button class="color-dot" data-color="#aa44ff" style="background:#aa44ff"></button>
+          <button class="color-dot" data-color="#ff44aa" style="background:#ff44aa"></button>
+          <button class="color-dot" data-color="#000000" style="background:#000000"></button>
+        </div>
+      </div>
+      <div class="tool-group">
+        <label class="size-label" data-i18n="draw.size">Size</label>
+        <input type="range" id="brush-size" min="2" max="40" value="8" class="size-slider">
+      </div>
+      <div class="tool-group">
+        <button id="btn-eraser" class="tool-btn" data-i18n="draw.eraser">Eraser</button>
+        <button id="btn-clear" class="tool-btn tool-btn-danger" data-i18n="draw.clear">Clear</button>
+      </div>
+    </div>
+    <button id="btn-done" class="btn-primary btn-big" data-i18n="draw.done">Done! Create My Story</button>
+  </section>
+
+  <!-- Phase 2-5: Processing -->
+  <section id="phase-processing" class="phase">
+    <div class="processing-card">
+      <div class="processing-emoji" id="proc-emoji">🤔</div>
+      <h2 id="proc-title" data-i18n="proc.looking">AI is looking at your drawing...</h2>
+      <div class="progress-bar"><div class="progress-fill" id="proc-progress"></div></div>
+      <p class="proc-detail" id="proc-detail"></p>
+    </div>
+  </section>
+
+  <!-- Phase 5: Result -->
+  <section id="phase-result" class="phase">
+    <h2 class="result-title" data-i18n="result.title">Your Magic Story is Ready!</h2>
+    <div class="result-card">
+      <div class="result-section">
+        <h3 data-i18n="result.drawing">Your Drawing</h3>
+        <img id="result-drawing" alt="Drawing">
+      </div>
+      <div class="result-section">
+        <h3 data-i18n="result.description">AI Description</h3>
+        <p id="result-description"></p>
+      </div>
+      <div class="result-section">
+        <h3 data-i18n="result.story">Story</h3>
+        <p id="result-story"></p>
+      </div>
+      <div class="result-section">
+        <h3 data-i18n="result.audio">Audio Narration</h3>
+        <audio id="result-audio" controls></audio>
+      </div>
+      <div class="result-section">
+        <h3 data-i18n="result.video">Story Video</h3>
+        <video id="result-video" controls></video>
+      </div>
+      <div class="result-actions">
+        <a id="btn-download-video" class="btn-primary" download="magic-story.mp4" data-i18n="result.download">Download Video</a>
+      </div>
+    </div>
+    <button id="btn-start-over" class="btn-secondary" data-i18n="result.again">Draw Another Story!</button>
+  </section>
+
+  <!-- Error Display -->
+  <div id="error-banner" class="error-banner hidden">
+    <span id="error-text"></span>
+    <button id="btn-dismiss-error" class="error-dismiss">&times;</button>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/util.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/ollama.js"></script>
+  <script src="js/elevenlabs.js"></script>
+  <script src="js/video.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
