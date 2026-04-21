@@ -13,6 +13,12 @@
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={ \"model\": \"llava\", \"prompt\": \"Describe this drawing in detail for a children story. What characters or objects are shown? What are they doing? Be specific. \" + ( $(\"Webhook\").item.json.language === \"id\" ? \" Write in Indonesian.\" : $(\"Webhook\").item.json.language === \"zh-TW\" ? \" Write in Traditional Chinese.\" : \" Write in English.\" ), \"images\": [\"\" + $(\"Webhook\").item.json.image + \"\"], \"stream\": false }",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "Bearer eb185bf9e9804e84b6979c9ab17d531f.JSFMFBwZgwWtGT8eU7ETi4Xs"}
+          ]
+        },
         "options": {}
       },
       "name": "Ollama Vision", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [300, 0]
@@ -24,6 +30,12 @@
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={ \"model\": \"llama3.2\", \"prompt\": \"Write a magical 30-second children story (under 100 words, ages 4-8) based on this description: \\\"\" + $node[\"Ollama Vision\"].json.response + \"\\\". Friendly, easy to understand, happy ending. \" + ( $(\"Webhook\").item.json.language === \"id\" ? \" Write in Indonesian.\" : $(\"Webhook\").item.json.language === \"zh-TW\" ? \" Write in Traditional Chinese.\" : \" Write in English.\" ), \"stream\": false }",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "Bearer eb185bf9e9804e84b6979c9ab17d531f.JSFMFBwZgwWtGT8eU7ETi4Xs"}
+          ]
+        },
         "options": {}
       },
       "name": "Ollama Story", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 0]
