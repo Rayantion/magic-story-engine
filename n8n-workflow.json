@@ -47,24 +47,14 @@
       "name": "ElevenLabs TTS", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [900, 0]
     },
     {
-      "parameters": {
-        "jsCode": "const description = $node['Ollama Vision'].json.response || '';\nconst story = $node['Ollama Story'].json.response || '';\nconst audioBuffer = $node['ElevenLabs TTS'].binary.data;\nconst audioBase64 = audioBuffer ? Buffer.from(audioBuffer.data, 'base64').toString('base64') : '';\n\nreturn [{\n  json: {\n    description: description,\n    story: story,\n    audio: audioBase64\n  }\n}];"
-      },
-      "name": "Combine Response", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1200, 0]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($node['Combine Response'].json) }}"
-      },
-      "name": "Return Response", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1500, 0]
+      "parameters": {"respondWith": "binary", "binaryPropertyName": "data"},
+      "name": "Return Audio", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1200, 0]
     }
   ],
   "connections": {
     "Webhook": {"main": [[{"node": "Ollama Vision", "type": "main", "index": 0}]]},
     "Ollama Vision": {"main": [[{"node": "Ollama Story", "type": "main", "index": 0}]]},
     "Ollama Story": {"main": [[{"node": "ElevenLabs TTS", "type": "main", "index": 0}]]},
-    "ElevenLabs TTS": {"main": [[{"node": "Combine Response", "type": "main", "index": 0}]]},
-    "Combine Response": {"main": [[{"node": "Return Response", "type": "main", "index": 0}]]}
+    "ElevenLabs TTS": {"main": [[{"node": "Return Audio", "type": "main", "index": 0}]]}
   }
 }

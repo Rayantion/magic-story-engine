@@ -9,8 +9,7 @@ const Pipeline = (() => {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error('Pipeline error ' + response.status + ': ' + errText);
+      throw new Error('Pipeline error ' + response.status);
     }
 
     const data = await response.json();

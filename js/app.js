@@ -91,11 +91,11 @@ const App = (() => {
       console.error('Processing error:', err);
       const msg = err.message || '';
       if (msg.includes('Pipeline') || msg.includes('fetch') || msg.includes('NetworkError')) {
-        showError(I18N.t('error.ollama') + ' ' + msg);
+        showError(I18N.t('error.ollama'));
       } else if (msg.includes('FFmpeg') || msg.includes('ffmpeg')) {
-        showError(I18N.t('error.ffmpeg') + ' ' + msg);
+        showError(I18N.t('error.ffmpeg'));
       } else {
-        showError(I18N.t('error.generic') + ' ' + msg);
+        showError(I18N.t('error.generic'));
       }
       showPhase('phase-draw');
       setStep(1);
